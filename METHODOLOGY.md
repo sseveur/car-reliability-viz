@@ -8,6 +8,39 @@ Every score shown is derived from **published source data** using a transparent,
 
 ---
 
+## AI-Assisted Data Enrichment (experimental branch)
+
+Some data gaps were filled using an LLM (Claude) recalling information from its training data. This approach was used to:
+- Estimate What Car? percentages for mid-table brands (ranks 11–21) where scores aren't publicly available
+- Estimate TÜV defect rates for brands where only a few models' rates are publicly known
+- Adjust km lifespan values based on recalled iSeeCars data
+- Add 3 European brands (Peugeot, Citroen, Seat) that appeared in source surveys but were missing from the dataset
+
+### Why use AI for this?
+
+Many data points sit behind paywalls or are spread across dozens of articles in different languages. An LLM trained on web data can recall approximate values from sources it encountered during training — not perfectly, but often directionally correct. This is explicitly a **stopgap** until real source data replaces it.
+
+### How AI-generated values are marked
+
+Every AI-estimated value is tagged with a confidence level in the source code comments and in [AI_DATA_NOTES.md](AI_DATA_NOTES.md):
+
+- **verified** — the AI recalled a specific published figure that matches known reference data
+- **likely** (~80% confidence) — the AI is fairly confident in the approximate value
+- **estimated** (~50% confidence) — the AI is interpolating from partial knowledge; value could be off significantly
+
+### Limitations of AI-generated data
+
+- LLM recall is **not citeable** — it cannot link back to the specific article or table it learned from
+- Values may reflect older survey editions (2023/2024) rather than the latest
+- The model may conflate similar-sounding statistics (e.g., mixing up defect rates from different age groups)
+- There is no way to verify AI-recalled values without checking the original source
+
+### Goal
+
+Every AI-estimated value should eventually be replaced with a verified figure from the original source. The AI values exist to make the visualisation more complete while community contributions fill in the gaps. See [AI_DATA_NOTES.md](AI_DATA_NOTES.md) for the full changelog.
+
+---
+
 ## 1. Consumer Reports (CR) — Predicted Reliability Score
 
 **Source data format:** CR publishes brand-level predicted reliability scores on a 0–100 scale, based on survey responses from 380,000+ vehicle owners across 20 trouble areas.
