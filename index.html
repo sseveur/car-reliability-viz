@@ -189,14 +189,75 @@
       align-items: center;
       gap: 8px;
     }
-    .slicer-group input[type="range"] {
-      width: 120px;
-      accent-color: var(--accent);
-    }
     .slicer-label {
       font-size: 11px;
       color: var(--text3);
       min-width: 48px;
+    }
+    .range-slider {
+      position: relative;
+      width: 200px;
+      height: 20px;
+    }
+    .range-slider input[type="range"] {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      margin: 0;
+      pointer-events: none;
+      -webkit-appearance: none;
+      appearance: none;
+      background: none;
+      height: 20px;
+    }
+    .range-slider input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      pointer-events: all;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: 2px solid var(--bg);
+      cursor: pointer;
+      position: relative;
+      z-index: 2;
+    }
+    .range-slider input[type="range"]::-moz-range-thumb {
+      pointer-events: all;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: 2px solid var(--bg);
+      cursor: pointer;
+    }
+    .range-slider .track {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 4px;
+      transform: translateY(-50%);
+      border-radius: 2px;
+      background: var(--bg3);
+      z-index: 0;
+    }
+    .range-slider .track-fill {
+      position: absolute;
+      top: 50%;
+      height: 4px;
+      transform: translateY(-50%);
+      border-radius: 2px;
+      background: var(--accent);
+      z-index: 1;
+    }
+    .range-slider input[type="range"]::-webkit-slider-runnable-track {
+      -webkit-appearance: none;
+      background: transparent;
+    }
+    .range-slider input[type="range"]::-moz-range-track {
+      background: transparent;
     }
 
     #brand-search {
@@ -391,8 +452,12 @@
         <span class="control-label">Price</span>
         <div class="slicer-group">
           <span class="slicer-label" id="price-min-label">A$0k</span>
-          <input type="range" id="price-min" min="0" max="400" value="0" step="5" />
-          <input type="range" id="price-max" min="0" max="400" value="400" step="5" />
+          <div class="range-slider" id="range-slider">
+            <div class="track"></div>
+            <div class="track-fill" id="track-fill"></div>
+            <input type="range" id="price-min" min="0" max="400" value="0" step="5" />
+            <input type="range" id="price-max" min="0" max="400" value="400" step="5" />
+          </div>
           <span class="slicer-label" id="price-max-label">A$400k+</span>
         </div>
       </div>
@@ -712,18 +777,24 @@ const priceMaxEl = document.getElementById('price-max');
 const priceMinLbl = document.getElementById('price-min-label');
 const priceMaxLbl = document.getElementById('price-max-label');
 
+const trackFill = document.getElementById('track-fill');
+
 function updatePriceSlicer() {
   let lo = parseInt(priceMinEl.value), hi = parseInt(priceMaxEl.value);
-  if (lo > hi) { priceMinEl.value = hi; lo = hi; }
+  if (lo > hi) { const tmp = lo; lo = hi; hi = tmp; priceMinEl.value = lo; priceMaxEl.value = hi; }
   priceMinK = lo;
   priceMaxK = hi;
   priceMinLbl.textContent = `A$${lo}k`;
   priceMaxLbl.textContent = hi >= 400 ? 'A$400k+' : `A$${hi}k`;
+  const pctLo = (lo / 400) * 100, pctHi = (hi / 400) * 100;
+  trackFill.style.left = pctLo + '%';
+  trackFill.style.right = (100 - pctHi) + '%';
   if (chartInst) chartInst.update('none');
 }
 
 priceMinEl.addEventListener('input', updatePriceSlicer);
 priceMaxEl.addEventListener('input', updatePriceSlicer);
+updatePriceSlicer();
 
 render();
 </script>
