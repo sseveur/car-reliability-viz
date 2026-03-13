@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Car Reliability vs Longevity — Global Data Explorer</title>
+  <meta name="description" content="Interactive scatter plot comparing car brand reliability scores from Consumer Reports, What Car? and TÜV against average vehicle lifespan and used car prices across markets." />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #ffffff;
+      --bg2: #f5f4f0;
+      --bg3: #eeedea;
+      --text: #1a1a18;
+      --text2: #5f5e5a;
+      --text3: #888780;
+      --border: rgba(0,0,0,0.1);
+      --border2: rgba(0,0,0,0.2);
+      --accent: #185FA5;
+      --accent-bg: #E6F1FB;
+      --amber-bg: #FAEEDA;
+      --amber: #854F0B;
+      --radius: 8px;
+      --radius-lg: 12px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1c1c1a;
+        --bg2: #242422;
+        --bg3: #2c2c2a;
+        --text: #f0efe9;
+        --text2: #b4b2a9;
+        --text3: #888780;
+        --border: rgba(255,255,255,0.1);
+        --border2: rgba(255,255,255,0.2);
+        --accent-bg: #0c2a48;
+        --amber-bg: #3a2000;
+      }
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    /* ── HEADER ── */
+    header {
+      border-bottom: 0.5px solid var(--border);
+      padding: 0 2rem;
+    }
+    .header-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 60px;
+    }
+    .logo {
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--text);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .logo-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #1D9E75;
+    }
+    nav a {
+      font-size: 13px;
+      color: var(--text3);
+      text-decoration: none;
+      margin-left: 24px;
+      transition: color 0.15s;
+    }
+    nav a:hover { color: var(--text); }
+
+    /* ── HERO ── */
+    .hero {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 4rem 2rem 2rem;
+    }
+    .hero-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--accent);
+      background: var(--accent-bg);
+      border-radius: 20px;
+      padding: 3px 10px;
+      margin-bottom: 1rem;
+    }
+    .hero h1 {
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      font-weight: 500;
+      line-height: 1.2;
+      max-width: 700px;
+      margin-bottom: 1rem;
+    }
+    .hero p {
+      font-size: 16px;
+      color: var(--text2);
+      max-width: 620px;
+      margin-bottom: 2rem;
+    }
+
+    /* ── STATS ROW ── */
+    .stats-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 3rem;
+    }
+    .stat-card {
+      background: var(--bg2);
+      border-radius: var(--radius);
+      padding: 14px 20px;
+      min-width: 140px;
+    }
+    .stat-label {
+      font-size: 12px;
+      color: var(--text3);
+      margin-bottom: 4px;
+    }
+    .stat-value {
+      font-size: 22px;
+      font-weight: 500;
+    }
+
+    /* ── MAIN CHART SECTION ── */
+    .chart-section {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 2rem 4rem;
+    }
+
+    /* ── CONTROLS ── */
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .control-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+    .control-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text2);
+      min-width: 60px;
+    }
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .btn {
+      font-size: 12px;
+      padding: 5px 13px;
+      border-radius: 20px;
+      border: 0.5px solid var(--border2);
+      background: transparent;
+      color: var(--text2);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .btn:hover { background: var(--bg2); }
+    .btn.active-src { background: var(--accent-bg); color: var(--accent); border-color: transparent; }
+    .btn.active-mkt { background: var(--amber-bg); color: var(--amber); border-color: transparent; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ── SHAPE LEGEND ── */
+    .legend-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+      font-size: 12px;
+      color: var(--text2);
+      margin-bottom: 8px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    /* ── SCORE GRADIENT ── */
+    .gradient-bar {
+      height: 8px;
+      border-radius: 4px;
+      overflow: hidden;
+      display: flex;
+      margin-bottom: 4px;
+    }
+    .gradient-bar div { flex: 1; }
+    .gradient-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: var(--text3);
+      margin-bottom: 12px;
+    }
+
+    /* ── PRICE LEGEND ── */
+    #price-legend {
+      font-size: 11px;
+      color: var(--text3);
+      margin-bottom: 8px;
+      min-height: 16px;
+    }
+
+    /* ── CHART WRAPPER ── */
+    .chart-wrapper {
+      position: relative;
+      width: 100%;
+      height: 540px;
+      background: var(--bg);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1rem;
+    }
+
+    /* ── FOOTNOTE ── */
+    .footnote {
+      font-size: 11px;
+      color: var(--text3);
+      margin-top: 12px;
+      line-height: 1.7;
+    }
+    .footnote a { color: var(--text3); }
+
+    /* ── EXPLAINER ── */
+    .explainer {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 2rem 5rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+    }
+    .card {
+      background: var(--bg2);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem 1.5rem;
+    }
+    .card h3 {
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+    .card p {
+      font-size: 13px;
+      color: var(--text2);
+      line-height: 1.6;
+    }
+    .source-tag {
+      display: inline-block;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-bottom: 8px;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 0.5px solid var(--border);
+      padding: 2rem;
+      text-align: center;
+      font-size: 12px;
+      color: var(--text3);
+    }
+    footer a { color: var(--text3); text-decoration: underline; }
+
+    @media (max-width: 600px) {
+      .header-inner { height: 52px; }
+      nav { display: none; }
+      .chart-wrapper { height: 420px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <a class="logo" href="#">
+      <span class="logo-dot"></span>
+      Car Reliability Explorer
+    </a>
+    <nav>
+      <a href="#chart">Chart</a>
+      <a href="#sources">Sources</a>
+      <a href="https://github.com/sseveur/car-reliability-viz" target="_blank">GitHub ↗</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="hero-tag">
+      <svg width="10" height="10"><circle cx="5" cy="5" r="4" fill="#1D9E75"/></svg>
+      Data from 3 independent global surveys
+    </div>
+    <h1>Which car brands are truly reliable — and for how long?</h1>
+    <p>
+      This chart cross-references Consumer Reports (380k US vehicles), What Car? (30k UK owners),
+      and Germany's TÜV Report (9.5M inspections) to give a comprehensive, multi-market view of
+      car brand reliability vs average vehicle lifespan. Bubble size reflects average used car price.
+    </p>
+
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Brands tracked</div>
+        <div class="stat-value">37</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Surveys combined</div>
+        <div class="stat-value">3</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Inspections (TÜV)</div>
+        <div class="stat-value">9.5M</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Markets</div>
+        <div class="stat-value">AU · UK · US</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="chart-section" id="chart">
+
+    <div class="controls">
+      <div class="control-row">
+        <span class="control-label">Source</span>
+        <div class="btn-group">
+          <button class="btn active-src" data-mode="default">Default (TÜV › WC › CR)</button>
+          <button class="btn" data-mode="tuv">TÜV only</button>
+          <button class="btn" data-mode="wc">What Car? only</button>
+          <button class="btn" data-mode="cr">Consumer Reports only</button>
+        </div>
+      </div>
+      <div class="control-row">
+        <span class="control-label">Market</span>
+        <div class="btn-group">
+          <button class="btn active-mkt" data-market="au">🇦🇺 Australia (A$)</button>
+          <button class="btn" data-market="uk">🇬🇧 UK (£)</button>
+          <button class="btn" data-market="us">🇺🇸 USA ($)</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="legend-row">
+      <span style="font-weight:500;font-size:12px;color:var(--text2);">Shape = source:</span>
+      <span class="legend-item">
+        <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#888780"/></svg>
+        Consumer Reports
+      </span>
+      <span class="legend-item">
+        <svg width="12" height="12"><polygon points="6,1 11,11 1,11" fill="#888780"/></svg>
+        What Car?
+      </span>
+      <span class="legend-item">
+        <svg width="12" height="12"><polygon points="6,0.5 11.5,6 6,11.5 0.5,6" fill="#888780"/></svg>
+        TÜV
+      </span>
+      <span class="legend-item" style="margin-left:8px;">
+        <svg width="26" height="12">
+          <circle cx="5"  cy="6" r="4.5" fill="#888780" opacity="0.3"/>
+          <circle cx="20" cy="6" r="3.5" fill="#888780" opacity="0.3"/>
+        </svg>
+        Size = used price
+      </span>
+    </div>
+
+    <div class="gradient-bar">
+      <div style="background:#E24B4A"></div>
+      <div style="background:#D85A30"></div>
+      <div style="background:#EF9F27"></div>
+      <div style="background:#1D9E75"></div>
+      <div style="background:#639922"></div>
+    </div>
+    <div class="gradient-labels">
+      <span>0 — Poor</span><span>25</span><span>50 — Average</span><span>75</span><span>100 — Excellent</span>
+    </div>
+
+    <div id="price-legend"></div>
+
+    <div class="chart-wrapper">
+      <canvas id="scatter"></canvas>
+    </div>
+
+    <p class="footnote">
+      X axis: estimated average vehicle lifespan (km), derived from iSeeCars Longest-Lasting Brands study &amp;
+      Junk Car Medics 2024 end-of-life data (miles converted). Y axis: reliability score 0–100.
+      Used prices are market estimates (3–5 yr old vehicles) based on Carsales/RedBook/AutoTrader listing patterns — no single public brand-level dataset exists.
+      Sources: <a href="https://www.consumerreports.org" target="_blank">Consumer Reports</a> (Dec 2025),
+      <a href="https://www.whatcar.com" target="_blank">What Car?</a> (Oct 2025),
+      <a href="https://www.tuvsud.com" target="_blank">TÜV SÜD Report</a> (Nov 2025).
+    </p>
+  </section>
+
+  <section class="explainer" id="sources">
+    <div class="card">
+      <div class="source-tag" style="background:#E6F1FB;color:#185FA5;">Consumer Reports · US</div>
+      <h3>380,000 vehicle survey</h3>
+      <p>Annual US member survey covering 20 problem areas across 2000–2026 model years. Strongest for brands sold in volume in North America. Misses Peugeot, Renault, Dacia, Fiat, Mini, Alfa Romeo due to insufficient US sample size.</p>
+    </div>
+    <div class="card">
+      <div class="source-tag" style="background:#EAF3DE;color:#3B6D11;">What Car? · UK</div>
+      <h3>30,000 UK owner survey</h3>
+      <p>Annual UK survey across 31 brands with ~30k responses. Best source for Mini, Suzuki, Alfa Romeo, Jaguar and MG — brands with minimal US presence. Scores weight not just fault rates but repair costs and downtime.</p>
+    </div>
+    <div class="card">
+      <div class="source-tag" style="background:#FAEEDA;color:#854F0B;">TÜV Report · Europe</div>
+      <h3>9.5M German MOT inspections</h3>
+      <p>The largest dataset by far — mandatory annual technical inspections across Germany. Covers European brands comprehensively. Key finding 2026: Tesla Model Y posted the worst defect rate in a decade among near-new cars.</p>
+    </div>
+    <div class="card">
+      <div class="source-tag" style="background:#F1EFE8;color:#5F5E5A;">Longevity data</div>
+      <h3>iSeeCars + Junk Car Medics</h3>
+      <p>X-axis km values derived from iSeeCars Longest-Lasting Brands study (250M+ vehicle analysis) and Junk Car Medics end-of-life data (50k junked vehicles, 2024). Original mile figures converted at ×1.609.</p>
+    </div>
+  </section>
+</main>
+
+<footer>
+  Built with Chart.js · Data from Consumer Reports, What Car?, TÜV SÜD, iSeeCars, Junk Car Medics ·
+  <a href="https://github.com/sseveur/car-reliability-viz" target="_blank">View source on GitHub</a>
+</footer>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────────────
+const BRANDS = [
+  { n:"Toyota",     km:310000, cr:66,  wc:84,  tuv:68,  au:35000, uk:null, us:null },
+  { n:"Subaru",     km:255000, cr:63,  wc:null, tuv:null,au:25000, uk:null, us:null },
+  { n:"Lexus",      km:295000, cr:60,  wc:65,  tuv:null,au:52000, uk:null, us:null },
+  { n:"Honda",      km:290000, cr:59,  wc:90,  tuv:68,  au:22000, uk:null, us:null },
+  { n:"Acura",      km:285000, cr:54,  wc:null, tuv:null,au:null,  uk:null, us:null },
+  { n:"Nissan",     km:220000, cr:57,  wc:30,  tuv:null,au:20000, uk:null, us:null },
+  { n:"Kia",        km:200000, cr:49,  wc:72,  tuv:null,au:22000, uk:null, us:null },
+  { n:"Hyundai",    km:198000, cr:48,  wc:70,  tuv:null,au:21000, uk:null, us:null },
+  { n:"Mazda",      km:240000, cr:43,  wc:null, tuv:90,  au:22000, uk:null, us:null },
+  { n:"Suzuki",     km:200000, cr:null,wc:86,  tuv:74,  au:15000, uk:null, us:null },
+  { n:"Mitsubishi", km:220000, cr:null,wc:null, tuv:76,  au:22000, uk:null, us:null },
+  { n:"Genesis",    km:185000, cr:33,  wc:null, tuv:null,au:35000, uk:null, us:null },
+  { n:"BMW",        km:230000, cr:58,  wc:68,  tuv:80,  au:48000, uk:null, us:null },
+  { n:"Porsche",    km:250000, cr:null,wc:null, tuv:88,  au:90000, uk:null, us:null },
+  { n:"Mercedes",   km:245000, cr:41,  wc:null, tuv:83,  au:50000, uk:null, us:null },
+  { n:"Audi",       km:230000, cr:44,  wc:null, tuv:80,  au:44000, uk:null, us:null },
+  { n:"VW",         km:215000, cr:42,  wc:null, tuv:72,  au:26000, uk:null, us:null },
+  { n:"Volvo",      km:245000, cr:42,  wc:null, tuv:55,  au:34000, uk:null, us:null },
+  { n:"Mini",       km:210000, cr:null,wc:88,  tuv:null,au:22000, uk:null, us:null },
+  { n:"Alfa Romeo", km:195000, cr:null,wc:45,  tuv:null,au:28000, uk:null, us:null },
+  { n:"Skoda",      km:195000, cr:null,wc:null, tuv:45,  au:24000, uk:null, us:null },
+  { n:"Fiat",       km:185000, cr:null,wc:28,  tuv:50,  au:14000, uk:null, us:null },
+  { n:"Renault",    km:190000, cr:null,wc:null, tuv:38,  au:18000, uk:null, us:null },
+  { n:"Dacia",      km:180000, cr:null,wc:null, tuv:32,  au:null,  uk:null, us:null },
+  { n:"Land Rover", km:200000, cr:null,wc:55,  tuv:null,au:55000, uk:null, us:null },
+  { n:"Jaguar",     km:195000, cr:null,wc:26,  tuv:null,au:38000, uk:null, us:null },
+  { n:"Buick",      km:225000, cr:51,  wc:null, tuv:null,au:null,  uk:null, us:null },
+  { n:"Ford",       km:250000, cr:48,  wc:null, tuv:null,au:38000, uk:null, us:null },
+  { n:"Tesla",      km:240000, cr:50,  wc:null, tuv:25,  au:40000, uk:null, us:null },
+  { n:"Chevrolet",  km:255000, cr:42,  wc:null, tuv:null,au:null,  uk:null, us:null },
+  { n:"Lincoln",    km:220000, cr:40,  wc:null, tuv:null,au:null,  uk:null, us:null },
+  { n:"Cadillac",   km:210000, cr:41,  wc:null, tuv:null,au:null,  uk:null, us:null },
+  { n:"GMC",        km:245000, cr:31,  wc:null, tuv:null,au:null,  uk:null, us:null },
+  { n:"Jeep",       km:200000, cr:28,  wc:null, tuv:null,au:28000, uk:null, us:null },
+  { n:"Ram",        km:220000, cr:26,  wc:null, tuv:null,au:null,  uk:null, us:null },
+  { n:"Rivian",     km:175000, cr:24,  wc:null, tuv:null,au:null,  uk:null, us:null },
+  { n:"MG",         km:170000, cr:null,wc:20,  tuv:null,au:18000, uk:null, us:null },
+];
+
+const MARKETS = {
+  au: { sym:"A$", label:"Australia" },
+  uk: { sym:"£",  label:"United Kingdom" },
+  us: { sym:"$",  label:"United States" },
+};
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+function getScore(b, mode) {
+  if (mode === 'default') {
+    if (b.tuv != null) return { score: b.tuv, src: 'tuv' };
+    if (b.wc  != null) return { score: b.wc,  src: 'wc'  };
+    if (b.cr  != null) return { score: b.cr,  src: 'cr'  };
+    return null;
+  }
+  if (b[mode] == null) return null;
+  return { score: b[mode], src: mode };
+}
+
+function scoreColor(v, a = 1) {
+  const S = [[0,[226,75,74]],[30,[216,90,48]],[50,[239,159,39]],[70,[29,158,117]],[100,[99,153,34]]];
+  v = Math.max(0, Math.min(100, v));
+  let i = 0;
+  while (i < S.length - 1 && S[i+1][0] <= v) i++;
+  if (i >= S.length - 1) { const c=S[S.length-1][1]; return `rgba(${c[0]},${c[1]},${c[2]},${a})`; }
+  const [ta,ca]=S[i],[,cb]=S[i+1];
+  const t = (v - ta) / (S[i+1][0] - ta);
+  return `rgba(${Math.round(ca[0]+t*(cb[0]-ca[0]))},${Math.round(ca[1]+t*(cb[1]-ca[1]))},${Math.round(ca[2]+t*(cb[2]-ca[2]))},${a})`;
+}
+
+function priceToR(price, all, mn=6, mx=22) {
+  if (price == null) return mn;
+  const valid = all.filter(p => p != null);
+  const lo = Math.min(...valid), hi = Math.max(...valid);
+  if (hi === lo) return (mn+mx)/2;
+  return mn + ((price - lo) / (hi - lo)) * (mx - mn);
+}
+
+function buildPoints(mode, mkt) {
+  const pts = BRANDS.map(b => {
+    const r = getScore(b, mode);
+    if (!r) return null;
+    return { x: b.km, y: r.score, label: b.n, src: r.src, price: b[mkt] ?? null };
+  }).filter(Boolean);
+  const allP = pts.map(p => p.price);
+  return pts.map(p => ({ ...p, r: priceToR(p.price, allP) }));
+}
+
+// ── LABEL PLUGIN ──────────────────────────────────────────────────────────────
+const labelPlugin = {
+  id: 'brandLabels',
+  afterDatasetsDraw(chart) {
+    const ctx = chart.ctx;
+    ctx.save();
+    ctx.font = '500 10px system-ui,sans-serif';
+    ctx.textBaseline = 'middle';
+    const ds = chart.data.datasets[0];
+    if (!ds) return;
+    chart.getDatasetMeta(0).data.forEach((el, i) => {
+      const pt = ds.data[i]; if (!pt) return;
+      const { x, y } = el.getProps(['x','y'], true);
+      const r = Array.isArray(ds.pointRadius) ? ds.pointRadius[i] : 9;
+      ctx.fillStyle = scoreColor(pt.y, 0.92);
+      ctx.fillText(pt.label, x + r + 3, y);
+    });
+    ctx.restore();
+  }
+};
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let chartInst = null;
+let mode = 'default', mkt = 'au';
+const DEFAULT_RADIUS = 9;
+
+function render() {
+  updateMarketButtons();
+  const pts = buildPoints(mode, mkt);
+  const sym = mkt ? MARKETS[mkt].sym : '';
+  const radii = mkt ? pts.map(p => p.r) : pts.map(() => DEFAULT_RADIUS);
+
+  if (chartInst) chartInst.destroy();
+  chartInst = new Chart(document.getElementById('scatter'), {
+    type: 'bubble',
+    data: { datasets: [{
+      data: pts,
+      pointStyle: ctx => { const p=ctx.dataset.data[ctx.dataIndex]; if(!p)return'circle'; return p.src==='cr'?'circle':p.src==='wc'?'triangle':'rectRot'; },
+      pointRadius: radii,
+      pointHoverRadius: radii.map(r => r+2),
+      backgroundColor: ctx => { const p=ctx.dataset.data[ctx.dataIndex]; return p?scoreColor(p.y,0.75):'rgba(136,135,128,0.4)'; },
+      borderColor:      ctx => { const p=ctx.dataset.data[ctx.dataIndex]; return p?scoreColor(p.y,1):'#888780'; },
+      borderWidth: 1.5,
+    }]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      layout: { padding: { right: 80, top: 10 } },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label(ctx) {
+          const p = ctx.raw;
+          const sn = {cr:'Consumer Reports',wc:'What Car?',tuv:'TÜV'}[p.src]??p.src;
+          const pr = p.price!=null?`  ·  ~${sym}${Math.round(p.price/1000)}k avg used`:'  ·  no price data';
+          return ` ${p.label}  ·  ${Math.round(p.x/1000)}k km  ·  score ${p.y}  [${sn}]${pr}`;
+        }}},
+      },
+      scales: {
+        x: { title:{display:true,text:'Avg lifespan (km)',color:'#888780',font:{size:12}}, min:155000, max:325000, ticks:{callback:v=>Math.round(v/1000)+'k',color:'#888780',font:{size:11}}, grid:{color:'rgba(136,135,128,0.12)'} },
+        y: { title:{display:true,text:'Reliability score (0–100)',color:'#888780',font:{size:12}}, min:0, max:100, ticks:{color:'#888780',font:{size:11}}, grid:{color:'rgba(136,135,128,0.12)'} },
+      },
+    },
+    plugins: [labelPlugin],
+  });
+
+  // price legend
+  const el = document.getElementById('price-legend');
+  if (!mkt) { el.textContent='Click a market to enable price-based bubble sizing.'; return; }
+  const prices = pts.map(p=>p.price).filter(p=>p!=null);
+  if (!prices.length) { el.textContent='No price data for this market.'; return; }
+  const lo=Math.round(Math.min(...prices)/1000), hi=Math.round(Math.max(...prices)/1000);
+  el.innerHTML = `Bubble size = avg used price (3–5 yr) · <strong>${sym}${lo}k–${sym}${hi}k</strong> range · <em>market estimates</em>`;
+}
+
+function updateMarketButtons() {
+  // Get the brands visible under the current source filter
+  const visibleBrands = BRANDS.filter(b => getScore(b, mode) != null);
+  document.querySelectorAll('[data-market]').forEach(btn => {
+    const m = btn.dataset.market;
+    const hasData = visibleBrands.some(b => b[m] != null);
+    btn.disabled = !hasData;
+    if (!hasData && btn.classList.contains('active-mkt')) {
+      btn.classList.remove('active-mkt');
+      mkt = null;
+    }
+  });
+}
+
+// ── BUTTON WIRING ─────────────────────────────────────────────────────────────
+document.querySelectorAll('[data-mode]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-mode]').forEach(b => b.classList.remove('active-src'));
+    btn.classList.add('active-src');
+    mode = btn.dataset.mode;
+    render();
+  });
+});
+
+document.querySelectorAll('[data-market]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (btn.classList.contains('active-mkt')) {
+      btn.classList.remove('active-mkt');
+      mkt = null;
+    } else {
+      document.querySelectorAll('[data-market]').forEach(b => b.classList.remove('active-mkt'));
+      btn.classList.add('active-mkt');
+      mkt = btn.dataset.market;
+    }
+    render();
+  });
+});
+
+render();
+</script>
+</body>
+</html>
