@@ -184,6 +184,21 @@
     .btn.active-mkt { background: var(--amber-bg); color: var(--amber); border-color: transparent; }
     .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
+    .slicer-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .slicer-group input[type="range"] {
+      width: 120px;
+      accent-color: var(--accent);
+    }
+    .slicer-label {
+      font-size: 11px;
+      color: var(--text3);
+      min-width: 48px;
+    }
+
     #brand-search {
       font-size: 12px;
       padding: 5px 13px;
@@ -367,8 +382,18 @@
         <span class="control-label">Market</span>
         <div class="btn-group">
           <button class="btn active-mkt" data-market="au">🇦🇺 Australia (A$)</button>
-          <button class="btn" data-market="uk">🇬🇧 UK (£)</button>
+          <button class="btn" data-market="eur">🇪🇺 Europe (€)</button>
           <button class="btn" data-market="us">🇺🇸 USA ($)</button>
+          <button class="btn" data-market="uk">🇬🇧 UK (£)</button>
+        </div>
+      </div>
+      <div class="control-row">
+        <span class="control-label">Price</span>
+        <div class="slicer-group">
+          <span class="slicer-label" id="price-min-label">A$0k</span>
+          <input type="range" id="price-min" min="0" max="400" value="0" step="5" />
+          <input type="range" id="price-max" min="0" max="400" value="400" step="5" />
+          <span class="slicer-label" id="price-max-label">A$400k+</span>
         </div>
       </div>
       <div class="control-row">
@@ -418,12 +443,15 @@
     </div>
 
     <p class="footnote">
-      X axis: estimated average vehicle lifespan (km), derived from iSeeCars Longest-Lasting Brands study &amp;
-      Junk Car Medics 2024 end-of-life data (miles converted). Y axis: reliability score 0–100.
-      Used prices are market estimates (3–5 yr old vehicles) based on Carsales/RedBook/AutoTrader listing patterns — no single public brand-level dataset exists.
+      Y axis: normalised 0–100 reliability score. CR scores are native 0–100. What Car? % scores rescaled via (raw% − 75) × 4.
+      TÜV defect rates inverted via (18 − avg%) / 18 × 100. X axis: estimated lifespan (km) from
+      <a href="https://www.iseecars.com/longest-lasting-car-brands-study" target="_blank">iSeeCars</a> &amp;
+      <a href="https://www.junkcarmedics.com/blog/what-is-the-lifespan-of-a-vehicle-in-the-usa/" target="_blank">Junk Car Medics</a>.
+      AU prices: median used (3–5 yr) from <a href="https://www.kaggle.com/datasets/nelgiriyewithana/australian-vehicle-prices" target="_blank">Kaggle AU Vehicle Prices</a>.
+      Full methodology: <a href="https://github.com/sseveur/car-reliability-viz/blob/main/METHODOLOGY.md" target="_blank">METHODOLOGY.md</a>.
       Sources: <a href="https://www.consumerreports.org" target="_blank">Consumer Reports</a> (Dec 2025),
-      <a href="https://www.whatcar.com" target="_blank">What Car?</a> (Oct 2025),
-      <a href="https://www.tuvsud.com" target="_blank">TÜV SÜD Report</a> (Nov 2025).
+      <a href="https://www.whatcar.com" target="_blank">What Car?</a> (2024 survey),
+      <a href="https://www.tuv.com" target="_blank">TÜV Report</a> (Nov 2025).
     </p>
   </section>
 
@@ -436,12 +464,12 @@
     <div class="card">
       <div class="source-tag" style="background:#EAF3DE;color:#3B6D11;">What Car? · UK</div>
       <h3>30,000 UK owner survey</h3>
-      <p>Annual UK survey across 31 brands with ~30k responses. Best source for Mini, Suzuki, Alfa Romeo, Jaguar and MG — brands with minimal US presence. Scores weight not just fault rates but repair costs and downtime.</p>
+      <p>Annual UK survey across 31 brands with ~30k responses. Publishes brand reliability as a percentage (76–98% range), rescaled to 0–100 here. Best source for Mini, Suzuki, Alfa Romeo, Jaguar and MG — brands with minimal US presence.</p>
     </div>
     <div class="card">
       <div class="source-tag" style="background:#FAEEDA;color:#854F0B;">TÜV Report · Europe</div>
       <h3>9.5M German MOT inspections</h3>
-      <p>The largest dataset by far — mandatory annual technical inspections across Germany. Covers European brands comprehensively. Key finding 2026: Tesla Model Y posted the worst defect rate in a decade among near-new cars.</p>
+      <p>The largest dataset by far — mandatory technical inspections across Germany. Publishes per-model defect rates (%), aggregated to brand level and inverted to 0–100 here. Tesla Model Y posted the worst defect rate in a decade (17.3%) among 2–3 year old cars.</p>
     </div>
     <div class="card">
       <div class="source-tag" style="background:#F1EFE8;color:#5F5E5A;">Longevity data</div>
@@ -458,50 +486,53 @@
 
 <script>
 // ── DATA ──────────────────────────────────────────────────────────────────────
+// Scores derived using methodology documented in METHODOLOGY.md
+// CR: 0-100 direct from Consumer Reports (Dec 2025). WC: (raw% - 75) × 4 from What Car? 2024. TÜV: (18 - avg_defect%) / 18 × 100.
 const BRANDS = [
-  { n:"Toyota",     km:310000, cr:66,  wc:84,  tuv:68,  au:35000, uk:null, us:null },
-  { n:"Subaru",     km:255000, cr:63,  wc:null, tuv:null,au:25000, uk:null, us:null },
-  { n:"Lexus",      km:295000, cr:60,  wc:65,  tuv:null,au:52000, uk:null, us:null },
-  { n:"Honda",      km:290000, cr:59,  wc:90,  tuv:68,  au:22000, uk:null, us:null },
-  { n:"Acura",      km:285000, cr:54,  wc:null, tuv:null,au:null,  uk:null, us:null },
-  { n:"Nissan",     km:220000, cr:57,  wc:30,  tuv:null,au:20000, uk:null, us:null },
-  { n:"Kia",        km:200000, cr:49,  wc:72,  tuv:null,au:22000, uk:null, us:null },
-  { n:"Hyundai",    km:198000, cr:48,  wc:70,  tuv:null,au:21000, uk:null, us:null },
-  { n:"Mazda",      km:240000, cr:43,  wc:null, tuv:90,  au:22000, uk:null, us:null },
-  { n:"Suzuki",     km:200000, cr:null,wc:86,  tuv:74,  au:15000, uk:null, us:null },
-  { n:"Mitsubishi", km:220000, cr:null,wc:null, tuv:76,  au:22000, uk:null, us:null },
-  { n:"Genesis",    km:185000, cr:33,  wc:null, tuv:null,au:35000, uk:null, us:null },
-  { n:"BMW",        km:230000, cr:58,  wc:68,  tuv:80,  au:48000, uk:null, us:null },
-  { n:"Porsche",    km:250000, cr:null,wc:null, tuv:88,  au:90000, uk:null, us:null },
-  { n:"Mercedes",   km:245000, cr:41,  wc:null, tuv:83,  au:50000, uk:null, us:null },
-  { n:"Audi",       km:230000, cr:44,  wc:null, tuv:80,  au:44000, uk:null, us:null },
-  { n:"VW",         km:215000, cr:42,  wc:null, tuv:72,  au:26000, uk:null, us:null },
-  { n:"Volvo",      km:245000, cr:42,  wc:null, tuv:55,  au:34000, uk:null, us:null },
-  { n:"Mini",       km:210000, cr:null,wc:88,  tuv:null,au:22000, uk:null, us:null },
-  { n:"Alfa Romeo", km:195000, cr:null,wc:45,  tuv:null,au:28000, uk:null, us:null },
-  { n:"Skoda",      km:195000, cr:null,wc:null, tuv:45,  au:24000, uk:null, us:null },
-  { n:"Fiat",       km:185000, cr:null,wc:28,  tuv:50,  au:14000, uk:null, us:null },
-  { n:"Renault",    km:190000, cr:null,wc:null, tuv:38,  au:18000, uk:null, us:null },
-  { n:"Dacia",      km:180000, cr:null,wc:null, tuv:32,  au:null,  uk:null, us:null },
-  { n:"Land Rover", km:200000, cr:null,wc:55,  tuv:null,au:55000, uk:null, us:null },
-  { n:"Jaguar",     km:195000, cr:null,wc:26,  tuv:null,au:38000, uk:null, us:null },
-  { n:"Buick",      km:225000, cr:51,  wc:null, tuv:null,au:null,  uk:null, us:null },
-  { n:"Ford",       km:250000, cr:48,  wc:null, tuv:null,au:38000, uk:null, us:null },
-  { n:"Tesla",      km:240000, cr:50,  wc:null, tuv:25,  au:40000, uk:null, us:null },
-  { n:"Chevrolet",  km:255000, cr:42,  wc:null, tuv:null,au:null,  uk:null, us:null },
-  { n:"Lincoln",    km:220000, cr:40,  wc:null, tuv:null,au:null,  uk:null, us:null },
-  { n:"Cadillac",   km:210000, cr:41,  wc:null, tuv:null,au:null,  uk:null, us:null },
-  { n:"GMC",        km:245000, cr:31,  wc:null, tuv:null,au:null,  uk:null, us:null },
-  { n:"Jeep",       km:200000, cr:28,  wc:null, tuv:null,au:28000, uk:null, us:null },
-  { n:"Ram",        km:220000, cr:26,  wc:null, tuv:null,au:null,  uk:null, us:null },
-  { n:"Rivian",     km:175000, cr:24,  wc:null, tuv:null,au:null,  uk:null, us:null },
-  { n:"MG",         km:170000, cr:null,wc:20,  tuv:null,au:18000, uk:null, us:null },
+  { n:"Toyota",     km:310000, cr:66,  wc:84,  tuv:76,  au:41447, au_min:17990, au_max:299900 },
+  { n:"Subaru",     km:255000, cr:63,  wc:null, tuv:null,au:33868, au_min:19990, au_max:71888  },
+  { n:"Lexus",      km:295000, cr:60,  wc:92,  tuv:null,au:60990, au_min:30950, au_max:128990 },
+  { n:"Honda",      km:290000, cr:59,  wc:86,  tuv:82,  au:33999, au_min:18990, au_max:67990  },
+  { n:"Acura",      km:285000, cr:54,  wc:null, tuv:null,au:null,  au_min:null,  au_max:null   },
+  { n:"Nissan",     km:220000, cr:57,  wc:44,  tuv:null,au:31845, au_min:17999, au_max:248888 },
+  { n:"Kia",        km:200000, cr:49,  wc:68,  tuv:null,au:28950, au_min:15977, au_max:64990  },
+  { n:"Hyundai",    km:198000, cr:48,  wc:74,  tuv:null,au:26990, au_min:13999, au_max:79990  },
+  { n:"Mazda",      km:240000, cr:43,  wc:null, tuv:84,  au:33990, au_min:14999, au_max:64990  },
+  { n:"Suzuki",     km:200000, cr:null,wc:91,  tuv:78,  au:22375, au_min:15888, au_max:43928  },
+  { n:"Mitsubishi", km:220000, cr:null,wc:null, tuv:72,  au:30850, au_min:14995, au_max:67990  },
+  { n:"Genesis",    km:185000, cr:33,  wc:null, tuv:null,au:52950, au_min:52950, au_max:52950  },
+  { n:"BMW",        km:230000, cr:58,  wc:76,  tuv:67,  au:55990, au_min:31888, au_max:189900 },
+  { n:"Porsche",    km:250000, cr:null,wc:null, tuv:86,  au:169888,au_min:64880, au_max:384888 },
+  { n:"Mercedes",   km:245000, cr:41,  wc:59,  tuv:72,  au:64880, au_min:29990, au_max:398880 },
+  { n:"Audi",       km:230000, cr:44,  wc:56,  tuv:75,  au:50880, au_min:16998, au_max:436900 },
+  { n:"VW",         km:215000, cr:42,  wc:null, tuv:72,  au:39900, au_min:19800, au_max:78990  },
+  { n:"Volvo",      km:245000, cr:42,  wc:null, tuv:61,  au:46990, au_min:36990, au_max:64990  },
+  { n:"Mini",       km:210000, cr:null,wc:93,  tuv:null,au:44990, au_min:29800, au_max:61990  },
+  { n:"Alfa Romeo", km:195000, cr:null,wc:36,  tuv:null,au:91990, au_min:76830, au_max:91990  },
+  { n:"Skoda",      km:195000, cr:null,wc:null, tuv:64,  au:34990, au_min:19990, au_max:59750  },
+  { n:"Fiat",       km:185000, cr:null,wc:53,  tuv:56,  au:21950, au_min:20800, au_max:38888  },
+  { n:"Renault",    km:190000, cr:null,wc:74,  tuv:58,  au:29990, au_min:20999, au_max:53980  },
+  { n:"Dacia",      km:180000, cr:null,wc:84,  tuv:56,  au:null,  au_min:null,  au_max:null   },
+  { n:"Land Rover", km:200000, cr:null,wc:48,  tuv:null,au:84500, au_min:34382, au_max:229990 },
+  { n:"Jaguar",     km:195000, cr:null,wc:39,  tuv:null,au:53000, au_min:34888, au_max:149888 },
+  { n:"Buick",      km:225000, cr:51,  wc:null, tuv:null,au:null,  au_min:null,  au_max:null   },
+  { n:"Ford",       km:250000, cr:48,  wc:null, tuv:null,au:45990, au_min:14990, au_max:149990 },
+  { n:"Tesla",      km:240000, cr:50,  wc:null, tuv:20,  au:69800, au_min:55950, au_max:165900 },
+  { n:"Chevrolet",  km:255000, cr:42,  wc:null, tuv:null,au:129990,au_min:115990,au_max:304950 },
+  { n:"Lincoln",    km:220000, cr:40,  wc:null, tuv:null,au:null,  au_min:null,  au_max:null   },
+  { n:"Cadillac",   km:210000, cr:41,  wc:null, tuv:null,au:null,  au_min:null,  au_max:null   },
+  { n:"GMC",        km:245000, cr:31,  wc:null, tuv:null,au:null,  au_min:null,  au_max:null   },
+  { n:"Jeep",       km:200000, cr:28,  wc:null, tuv:null,au:53980, au_min:17990, au_max:159990 },
+  { n:"Ram",        km:220000, cr:26,  wc:null, tuv:null,au:89990, au_min:75888, au_max:249990 },
+  { n:"Rivian",     km:175000, cr:24,  wc:null, tuv:null,au:null,  au_min:null,  au_max:null   },
+  { n:"MG",         km:170000, cr:null,wc:8,   tuv:null,au:25977, au_min:12990, au_max:39888  },
 ];
 
 const MARKETS = {
-  au: { sym:"A$", label:"Australia" },
-  uk: { sym:"£",  label:"United Kingdom" },
-  us: { sym:"$",  label:"United States" },
+  au:  { sym:"A$", label:"Australia" },
+  eur: { sym:"€",  label:"Europe" },
+  us:  { sym:"$",  label:"United States" },
+  uk:  { sym:"£",  label:"United Kingdom" },
 };
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
@@ -559,7 +590,7 @@ const labelPlugin = {
       const pt = ds.data[i]; if (!pt) return;
       const { x, y } = el.getProps(['x','y'], true);
       const r = Array.isArray(ds.pointRadius) ? ds.pointRadius[i] : 9;
-      ctx.fillStyle = matchesSearch(pt.label) ? scoreColor(pt.y, 0.92) : 'rgba(136,135,128,0.2)';
+      ctx.fillStyle = matchesFilter(pt) ? scoreColor(pt.y, 0.92) : 'rgba(136,135,128,0.2)';
       ctx.fillText(pt.label, x + r + 3, y);
     });
     ctx.restore();
@@ -569,11 +600,16 @@ const labelPlugin = {
 // ── STATE ─────────────────────────────────────────────────────────────────────
 let chartInst = null;
 let mode = 'default', mkt = 'au', searchTerm = '';
+let priceMinK = 0, priceMaxK = 400;
 const DEFAULT_RADIUS = 9;
 
-function matchesSearch(label) {
-  if (!searchTerm) return true;
-  return label.toLowerCase().includes(searchTerm.toLowerCase());
+function matchesFilter(pt) {
+  if (searchTerm && !pt.label.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+  if (pt.price != null) {
+    const pk = pt.price / 1000;
+    if (pk < priceMinK || pk > priceMaxK) return false;
+  }
+  return true;
 }
 
 function render() {
@@ -590,12 +626,13 @@ function render() {
       pointStyle: ctx => { const p=ctx.dataset.data[ctx.dataIndex]; if(!p)return'circle'; return p.src==='cr'?'circle':p.src==='wc'?'triangle':'rectRot'; },
       pointRadius: radii,
       pointHoverRadius: radii.map(r => r+2),
-      backgroundColor: ctx => { const p=ctx.dataset.data[ctx.dataIndex]; if(!p) return 'rgba(136,135,128,0.4)'; return matchesSearch(p.label)?scoreColor(p.y,0.75):'rgba(136,135,128,0.15)'; },
-      borderColor:      ctx => { const p=ctx.dataset.data[ctx.dataIndex]; if(!p) return '#888780'; return matchesSearch(p.label)?scoreColor(p.y,1):'rgba(136,135,128,0.25)'; },
+      backgroundColor: ctx => { const p=ctx.dataset.data[ctx.dataIndex]; if(!p) return 'rgba(136,135,128,0.4)'; return matchesFilter(p)?scoreColor(p.y,0.75):'rgba(136,135,128,0.15)'; },
+      borderColor:      ctx => { const p=ctx.dataset.data[ctx.dataIndex]; if(!p) return '#888780'; return matchesFilter(p)?scoreColor(p.y,1):'rgba(136,135,128,0.25)'; },
       borderWidth: 1.5,
     }]},
     options: {
       responsive: true, maintainAspectRatio: false,
+      animation: { duration: 800, easing: 'easeOutQuart' },
       layout: { padding: { right: 80, top: 10 } },
       plugins: {
         legend: { display: false },
@@ -669,6 +706,24 @@ document.getElementById('brand-search').addEventListener('input', e => {
     render();
   }
 });
+
+const priceMinEl = document.getElementById('price-min');
+const priceMaxEl = document.getElementById('price-max');
+const priceMinLbl = document.getElementById('price-min-label');
+const priceMaxLbl = document.getElementById('price-max-label');
+
+function updatePriceSlicer() {
+  let lo = parseInt(priceMinEl.value), hi = parseInt(priceMaxEl.value);
+  if (lo > hi) { priceMinEl.value = hi; lo = hi; }
+  priceMinK = lo;
+  priceMaxK = hi;
+  priceMinLbl.textContent = `A$${lo}k`;
+  priceMaxLbl.textContent = hi >= 400 ? 'A$400k+' : `A$${hi}k`;
+  if (chartInst) chartInst.update('none');
+}
+
+priceMinEl.addEventListener('input', updatePriceSlicer);
+priceMaxEl.addEventListener('input', updatePriceSlicer);
 
 render();
 </script>
