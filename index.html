@@ -184,6 +184,18 @@
     .btn.active-mkt { background: var(--amber-bg); color: var(--amber); border-color: transparent; }
     .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
+    #brand-search {
+      font-size: 12px;
+      padding: 5px 13px;
+      border-radius: 20px;
+      border: 0.5px solid var(--border2);
+      background: transparent;
+      color: var(--text);
+      outline: none;
+      width: 180px;
+    }
+    #brand-search:focus { border-color: var(--accent); }
+
     /* ── SHAPE LEGEND ── */
     .legend-row {
       display: flex;
@@ -332,13 +344,9 @@
         <div class="stat-label">Surveys combined</div>
         <div class="stat-value">3</div>
       </div>
-      <div class="stat-card">
-        <div class="stat-label">Inspections (TÜV)</div>
-        <div class="stat-value">9.5M</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Markets</div>
-        <div class="stat-value">AU · UK · US</div>
+<div class="stat-card">
+        <div class="stat-label">Used Markets</div>
+        <div class="stat-value">AU</div>
       </div>
     </div>
   </section>
@@ -362,6 +370,10 @@
           <button class="btn" data-market="uk">🇬🇧 UK (£)</button>
           <button class="btn" data-market="us">🇺🇸 USA ($)</button>
         </div>
+      </div>
+      <div class="control-row">
+        <span class="control-label">Search</span>
+        <input type="text" id="brand-search" placeholder="Filter brands…" autocomplete="off" />
       </div>
     </div>
 
@@ -547,7 +559,7 @@ const labelPlugin = {
       const pt = ds.data[i]; if (!pt) return;
       const { x, y } = el.getProps(['x','y'], true);
       const r = Array.isArray(ds.pointRadius) ? ds.pointRadius[i] : 9;
-      ctx.fillStyle = scoreColor(pt.y, 0.92);
+      ctx.fillStyle = matchesSearch(pt.label) ? scoreColor(pt.y, 0.92) : 'rgba(136,135,128,0.2)';
       ctx.fillText(pt.label, x + r + 3, y);
     });
     ctx.restore();
@@ -556,8 +568,13 @@ const labelPlugin = {
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
 let chartInst = null;
-let mode = 'default', mkt = 'au';
+let mode = 'default', mkt = 'au', searchTerm = '';
 const DEFAULT_RADIUS = 9;
+
+function matchesSearch(label) {
+  if (!searchTerm) return true;
+  return label.toLowerCase().includes(searchTerm.toLowerCase());
+}
 
 function render() {
   updateMarketButtons();
@@ -573,8 +590,8 @@ function render() {
       pointStyle: ctx => { const p=ctx.dataset.data[ctx.dataIndex]; if(!p)return'circle'; return p.src==='cr'?'circle':p.src==='wc'?'triangle':'rectRot'; },
       pointRadius: radii,
       pointHoverRadius: radii.map(r => r+2),
-      backgroundColor: ctx => { const p=ctx.dataset.data[ctx.dataIndex]; return p?scoreColor(p.y,0.75):'rgba(136,135,128,0.4)'; },
-      borderColor:      ctx => { const p=ctx.dataset.data[ctx.dataIndex]; return p?scoreColor(p.y,1):'#888780'; },
+      backgroundColor: ctx => { const p=ctx.dataset.data[ctx.dataIndex]; if(!p) return 'rgba(136,135,128,0.4)'; return matchesSearch(p.label)?scoreColor(p.y,0.75):'rgba(136,135,128,0.15)'; },
+      borderColor:      ctx => { const p=ctx.dataset.data[ctx.dataIndex]; if(!p) return '#888780'; return matchesSearch(p.label)?scoreColor(p.y,1):'rgba(136,135,128,0.25)'; },
       borderWidth: 1.5,
     }]},
     options: {
@@ -642,6 +659,15 @@ document.querySelectorAll('[data-market]').forEach(btn => {
     }
     render();
   });
+});
+
+document.getElementById('brand-search').addEventListener('input', e => {
+  searchTerm = e.target.value;
+  if (chartInst) {
+    chartInst.update('none');
+  } else {
+    render();
+  }
 });
 
 render();
